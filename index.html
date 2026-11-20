@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#04070d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Jarvis">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <title>Jarvis</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-mode="boot">
+
+  <!-- schermata iniziale: un tocco sblocca audio e microfono -->
+  <div id="gate">
+    <div class="gate-ring"><i></i><i></i></div>
+    <b>J.A.R.V.I.S.</b>
+    <span id="gateText">TOCCA PER ATTIVARE</span>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark"><i></i><i></i><i></i></div>
+      <div><b>J.A.R.V.I.S.</b><small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
+    </div>
+    <div class="status">
+      <span class="dot"></span><span id="statusText">INIZIALIZZAZIONE</span>
+      <span id="brainChip" hidden><i>CERVELLO</i><b id="brainName">—</b></span>
+    </div>
+    <div class="right">
+      <div class="clock"><b id="clock">--:--</b><small id="date"></small></div>
+      <button id="gear" class="icon" aria-label="Impostazioni">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="deck">
+    <aside class="col left">
+      <section class="panel" id="pAgenda">
+        <h3><span>OGGI</span><em id="agendaDay"></em><button class="mini" data-ask="Cosa ho in programma questa settimana?">SETTIMANA</button></h3>
+        <ol class="list" id="agenda"></ol>
+      </section>
+      <section class="panel" id="pEmail">
+        <h3><span>EMAIL</span><em id="emailCount"></em><button class="mini" id="emailRefresh">AGGIORNA</button></h3>
+        <ol class="list" id="emails"></ol>
+      </section>
+    </aside>
+
+    <section class="core">
+      <canvas id="orb"></canvas>
+      <div id="thinkLabel"></div>
+      <div id="caption">
+        <p id="you"></p>
+        <p id="says"></p>
+      </div>
+      <div id="draft" hidden>
+        <small>BOZZA EMAIL · IN ATTESA DEL SUO SÌ</small>
+        <b id="draftTo"></b>
+        <em id="draftSubject"></em>
+        <p id="draftBody"></p>
+        <div class="row"><button class="ghost" data-ask="Non spedirla.">ANNULLA</button><button class="primary" data-ask="Sì, spediscila.">SPEDISCI</button></div>
+      </div>
+    </section>
+
+    <aside class="col right">
+      <section class="panel" id="pTodo">
+        <h3><span>DA FARE</span><em id="todoCount"></em></h3>
+        <ol class="list" id="todos"></ol>
+        <form id="todoForm" class="add"><input placeholder="+ aggiungi una cosa da fare" autocomplete="off" enterkeyhint="done"></form>
+      </section>
+      <section class="panel" id="pRem">
+        <h3><span>PROMEMORIA</span><em id="remCount"></em></h3>
+        <ol class="list" id="reminders"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="bar">
+    <button id="mic" aria-label="Parla con Jarvis">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+      <span class="ring"></span>
+    </button>
+    <form id="ask"><input id="askInput" placeholder="Scriva a Jarvis…  oppure tocchi il microfono, o dica «Jarvis»" autocomplete="off" enterkeyhint="send"></form>
+    <div id="hint">DICA «JARVIS»</div>
+  </footer>
+
+  <div id="toast" role="status"></div>
+
+  <!-- ===================================================== impostazioni -->
+  <div id="settings">
+    <div class="sheet">
+      <header>
+        <div><span class="kicker">IMPOSTAZIONI</span><h2>Configura Jarvis</h2></div>
+        <button class="ghost" id="settingsClose">CHIUDI</button>
+      </header>
+      <p class="note">Le chiavi restano <b>solo su questo iPad</b>: non vengono mai salvate su GitHub.</p>
+
+      <section class="step">
+        <h3><b>01</b> Cervello <em>obbligatorio</em></h3>
+        <p>Jarvis usa prima <b>Claude</b> (Opus → Sonnet → Haiku). Quando il credito finisce o un modello è occupato passa da solo a <b>Gemini</b> gratis, dal modello più potente al più leggero.</p>
+        <label>Chiave Claude <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">ottienila ↗</a></label>
+        <input id="kAnthropic" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+        <small class="state" id="sAnthropic"></small>
+        <label>Chiave Gemini (gratis) <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">ottienila ↗</a></label>
+        <input id="kGemini" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">
+        <small class="state" id="sGemini"></small>
+        <div class="chain" id="chain"></div>
+      </section>
+
+      <section class="step">
+        <h3><b>02</b> Voce <em>ElevenLabs</em></h3>
+        <p>Senza chiave Jarvis usa la voce italiana dell'iPad.</p>
+        <label>Chiave ElevenLabs <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ottienila ↗</a></label>
+        <input id="kEleven" type="password" placeholder="sk_…" autocomplete="off" spellcheck="false">
+        <label>ID della voce <span class="fine">(facoltativo: vuoto = «Daniel», britannica)</span></label>
+        <input id="kVoice" placeholder="es. onwK4e9ZLuTAKqWW03F9" autocomplete="off" spellcheck="false">
+        <div class="row left"><button class="ghost" id="voiceTest" type="button">PROVA LA VOCE</button></div>
+        <small class="state" id="sEleven"></small>
+      </section>
+
+      <section class="step">
+        <h3><b>03</b> Google <em>email · agenda · cose da fare</em></h3>
+        <p>Collega il tuo account Google: Jarvis legge e scrive su <b>Gmail</b>, <b>Google Calendar</b> (agenda e promemoria, con notifica anche sul telefono) e <b>Google Tasks</b> (cose da fare). Senza Google, agenda e liste restano solo su questo iPad.</p>
+        <details>
+          <summary>Guida: come creare il permesso (una volta sola, ~10 minuti, meglio da computer)</summary>
+          <ol>
+            <li>Apri <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud ↗</a> con il tuo account Google e crea un progetto chiamato <b>Jarvis</b>.</li>
+            <li>Attiva le tre API (per ognuna premi <b>Abilita</b>): <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener">Gmail ↗</a>, <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Calendar ↗</a>, <a href="https://console.cloud.google.com/apis/library/tasks.googleapis.com" target="_blank" rel="noopener">Tasks ↗</a>.</li>
+            <li>Vai su <a href="https://console.cloud.google.com/auth/branding" target="_blank" rel="noopener">Schermata di consenso ↗</a>: nome app <b>Jarvis</b>, la tua email, tipo di utenti <b>Esterni</b>. Poi in <b>Pubblico / Audience</b> premi <b>Pubblica app</b> (così il permesso non scade ogni settimana; Google mostrerà un avviso «app non verificata»: è normale, l'app è tua).</li>
+            <li>Vai su <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Client ↗</a> → <b>Crea client</b> → tipo <b>Applicazione web</b>. In <b>Origini JavaScript autorizzate</b> aggiungi l'indirizzo di questa pagina: <code id="origin"></code></li>
+            <li>Copia <b>ID client</b> e <b>Client secret</b> qui sotto e premi <b>COLLEGA GOOGLE</b>. Nella finestra di Google scegli il tuo account, premi <b>Avanzate → Vai a Jarvis</b> e consenti tutto.</li>
+          </ol>
+        </details>
+        <label>ID client</label>
+        <input id="kGid" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+        <label>Client secret</label>
+        <input id="kGsecret" type="password" placeholder="GOCSPX-…" autocomplete="off" spellcheck="false">
+        <div class="row left"><button class="primary" id="gConnect" type="button">COLLEGA GOOGLE</button><button class="ghost" id="gDisconnect" type="button">SCOLLEGA</button></div>
+        <small class="state" id="sGoogle"></small>
+      </section>
+
+      <section class="step">
+        <h3><b>04</b> Tu</h3>
+        <div class="grid3">
+          <div><label>Come ti chiama</label><input id="sAddress" placeholder="signore"></div>
+          <div><label>Il tuo nome</label><input id="sName" placeholder="Leo"></div>
+          <div><label>Città (meteo)</label><input id="sCity" placeholder="es. Milano"></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <h3><b>05</b> Memoria</h3>
+        <p>Quello che Jarvis sa di te, una cosa per riga. Puoi correggere o cancellare.</p>
+        <textarea id="memFacts" rows="5" placeholder="Ancora niente: raccontagli qualcosa di te."></textarea>
+        <small class="state" id="sBrains"></small>
+      </section>
+
+      <section class="step">
+        <h3><b>06</b> Copia le impostazioni su un altro dispositivo</h3>
+        <p>Genera un codice con chiavi e memoria (tienilo privato!) e incollalo sull'altro dispositivo.</p>
+        <div class="row left"><button class="ghost" id="exportBtn" type="button">COPIA CODICE</button><button class="ghost" id="importBtn" type="button">INCOLLA CODICE</button></div>
+      </section>
+
+      <p class="credits">Basato sul progetto Jarvis di Thomas Colombo · licenza MIT (file LICENSE) · font Inter, SIL Open Font License · Anthropic SDK, MIT.</p>
+
+      <p class="setup-error" id="settingsError"></p>
+      <div class="row"><button class="primary" id="settingsSave" type="button">SALVA</button></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
