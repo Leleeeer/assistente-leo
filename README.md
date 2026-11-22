@@ -6,6 +6,7 @@ L'assistente personale di Leo: si apre da un'icona sulla schermata Home dell'iPa
 - **Plancia**: sfera al centro, intorno agenda di oggi, email non lette, cose da fare e promemoria. Si toccano: spunti le cose fatte, apri un'email e premi *Riassumi*, *Rispondi* o *Leggimela*. Toccando un widget si apre la sua sezione completa (mese del calendario, Mail a due colonne, liste complete).
 - **Google**: Gmail (legge, riassume e risponde, ma spedisce solo dopo il tuo sì), Google Calendar (agenda e promemoria, che arrivano come notifica anche sul telefono), Google Tasks (cose da fare).
 - **Voce** ElevenLabs (o quella dell'iPad), **memoria** di quello che gli racconti, **calcoli** istantanei e **ricerca su internet** (con Claude).
+- **Spotify** (Premium): «metti la mia playlist…», «metti Vasco Rossi», pausa, avanti, volume. In basso compare il brano in riproduzione.
 - **Musica di sottofondo** come nel Jarvis originale: parte al risveglio, si abbassa quando parla. Il brano si sceglie dall'iPad (Impostazioni → Musica) e resta solo lì, quindi non viene pubblicato su GitHub.
 
 ## Privacy
@@ -41,6 +42,8 @@ Questa pagina contiene **solo il codice**. Chiavi, memoria e impostazioni restan
 | `js/voice.js` | Voce (ElevenLabs / iPad) e ascolto |
 | `js/scene.js` | La scena 3D originale (sfera di particelle e rete neurale) |
 | `js/detail.js` | Le sezioni a tutto schermo che si aprono toccando un widget |
+| `js/centro.js` | Attività del centro di controllo (file dati/attivita.json del repository privato) |
+| `js/spotify.js` | Collegamento a Spotify Premium (comanda l'app Spotify) |
 | `js/music.js` | Musica di sottofondo (il brano resta salvato sull'iPad) |
 | `js/store.js` | Cosa resta salvato sull'iPad |
 | `js/calc.js` | Calcolatrice istantanea |

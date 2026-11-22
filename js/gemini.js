@@ -52,7 +52,7 @@ export async function converse({ apiKey, model, system, history, message, tools 
     ...history.map((h) => ({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: h.content }] })),
     { role: "user", parts: [{ text: message }] },
   ];
-  const decl = tools.map(({ name, description, parameters }) => ({ name, description, parameters: clean(parameters) }));
+  const decl = tools.map(({ name, description, parameters }) => ({ name, description, ...(Object.keys(parameters?.properties || {}).length ? { parameters: clean(parameters) } : {}) }));
   for (let round = 0; round < 5; round++) {
     const r = await fetch(`${BASE}/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`, {
       method: "POST",

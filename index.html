@@ -114,6 +114,13 @@
       </button>
       <form id="ask"><input id="askInput" placeholder="Chiedi a Jarvis" autocomplete="off" enterkeyhint="send"></form>
       <div id="hint"></div>
+      <div id="np" hidden>
+        <i class="ic green"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></i>
+        <div><b id="npTitle"></b><small id="npArtist"></small></div>
+        <button id="npPrev" aria-label="Precedente"><svg viewBox="0 0 24 24"><path d="M18 6 9 12l9 6zM6 6v12"/></svg></button>
+        <button id="npToggle" aria-label="Play o pausa"><svg viewBox="0 0 24 24"><path id="npIcon" d="M8 5v14l11-7z"/></svg></button>
+        <button id="npNext" aria-label="Successivo"><svg viewBox="0 0 24 24"><path d="m6 6 9 6-9 6zM18 6v12"/></svg></button>
+      </div>
     </div>
   </footer>
 
@@ -191,10 +198,54 @@
           <label>Brano</label>
           <label class="file"><input type="file" id="musicFile" accept="audio/*,.mp3,.m4a,.wav"><span>Scegli un brano dall'iPad</span></label>
           <small class="state" id="sMusic"></small>
-          <label class="toggle"><span>Parte quando Jarvis si sveglia</span><input type="checkbox" id="musicAuto" role="switch"><i></i></label>
+          <label class="toggle"><span>Sigla al risveglio (sfuma dopo 10 secondi)</span><input type="checkbox" id="musicAuto" role="switch"><i></i></label>
           <label>Volume</label>
           <input type="range" id="musicVol" min="0" max="100" step="5">
           <div class="row left"><button class="ghost" id="musicTest" type="button">Ascolta</button><button class="ghost" id="musicDel" type="button">Rimuovi</button></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <h3>Centro di controllo · Da fare</h3>
+        <div class="group">
+          <p>Il widget «Da fare» mostra le attività del tuo centro di controllo: quello che aggiungi o spunti da Jarvis compare anche lì, e viceversa.</p>
+          <details>
+            <summary>Come creare la chiave GitHub (una volta sola, circa 2 minuti)</summary>
+            <ol>
+              <li>Apri <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → nuova chiave</a> (accedi con il tuo account).</li>
+              <li><b>Token name</b>: <b>Jarvis</b>. <b>Expiration</b>: scegli una durata lunga (per esempio 1 anno).</li>
+              <li><b>Repository access</b> → <b>Only select repositories</b> → scegli solo <b>centro-di-controllo</b>.</li>
+              <li><b>Permissions</b> → <b>Repository permissions</b> → <b>Contents</b> → <b>Read and write</b>.</li>
+              <li>Premi <b>Generate token</b>, copia la chiave (inizia con github_pat_), incollala qui sotto e premi <b>Collega</b>.</li>
+            </ol>
+          </details>
+          <label>Repository</label>
+          <input id="kCentroRepo" placeholder="Leleeeer/centro-di-controllo" autocomplete="off" spellcheck="false">
+          <label>Chiave GitHub</label>
+          <input id="kCentroToken" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+          <div class="row left"><button class="primary" id="ccConnect" type="button">Collega</button><button class="ghost" id="ccDisconnect" type="button">Scollega</button></div>
+          <small class="state" id="sCentro"></small>
+        </div>
+      </section>
+
+      <section class="step">
+        <h3>Spotify</h3>
+        <div class="group">
+          <p>Con Spotify Premium Jarvis comanda l'app Spotify: «metti la mia playlist Allenamento», «metti Vasco Rossi», «pausa», «avanti», «cosa sta suonando?». L'app Spotify deve essere aperta sull'iPad (o su un altro tuo dispositivo).</p>
+          <details>
+            <summary>Come collegarlo (una volta sola, circa 3 minuti)</summary>
+            <ol>
+              <li>Apri <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify for Developers</a> e accedi con il tuo account Spotify.</li>
+              <li>Premi <b>Create app</b>. Nome: <b>Jarvis</b>, descrizione: <b>assistente personale</b>.</li>
+              <li>In <b>Redirect URIs</b> incolla esattamente questo indirizzo e premi <b>Add</b>: <code id="spRedirect"></code></li>
+              <li>Spunta <b>Web API</b>, accetta le condizioni e premi <b>Save</b>.</li>
+              <li>Nella pagina dell'app copia il <b>Client ID</b>, incollalo qui sotto e premi <b>Collega Spotify</b>.</li>
+            </ol>
+          </details>
+          <label>Client ID</label>
+          <input id="kSpotify" placeholder="es. 1a2b3c4d…" autocomplete="off" spellcheck="false">
+          <div class="row left"><button class="primary" id="spConnect" type="button">Collega Spotify</button><button class="ghost" id="spDisconnect" type="button">Scollega</button></div>
+          <small class="state" id="sSpotify"></small>
         </div>
       </section>
 
@@ -247,7 +298,7 @@
         </div>
       </section>
 
-      <p class="credits">Basato sul progetto Jarvis di Thomas Colombo · licenza MIT (file LICENSE) · font Inter, SIL Open Font License · three.js e Anthropic SDK, MIT.</p>
+      <p class="credits">Basato sul progetto Jarvis di Thomas Colombo · licenza MIT (file LICENSE) · font Inter, SIL Open Font License · three.js e Anthropic SDK, MIT. Spotify è un marchio di Spotify AB.</p>
 
       <p class="setup-error" id="settingsError"></p>
       <div class="row"><button class="primary wide" id="settingsSave" type="button">Salva</button></div>

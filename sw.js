@@ -1,6 +1,6 @@
 // Fa aprire Jarvis anche con internet lento: prova sempre la versione più nuova,
 // e se la rete non risponde usa l'ultima copia salvata.
-const CACHE = "jarvis-v7";
+const CACHE = "jarvis-v10";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));

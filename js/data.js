@@ -1,6 +1,7 @@
 // Agenda, cose da fare, promemoria ed email: se Google è collegato usa Google,
 // altrimenti salva tutto qui sull'iPad (così Jarvis funziona anche prima di collegarlo).
 import * as g from "./google.js";
+import * as centro from "./centro.js";
 import { load, save } from "./store.js";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -29,23 +30,39 @@ export async function deleteEvent(id) {
 }
 
 // ---------------------------------------------------------------- cose da fare
+// Priorità: centro di controllo (se collegato) → Google Tasks → lista sull'iPad
+export const usingCentro = () => centro.connected();
 export async function todos() {
+  if (usingCentro()) {
+    return (await centro.list())
+      .filter((a) => a.stato !== "Completato")
+      .map((a) => ({ id: a.id, text: a.titolo, stato: a.stato, importante: !!a.importante, quando: centro.parseQuando(a.quando), descrizione: a.descrizione || "" }))
+      .sort((a, b) => (b.importante - a.importante) || ((a.quando || 9e15) - (b.quando || 9e15)));
+  }
   if (usingGoogle()) return g.todos();
   return local().todos;
 }
-export async function addTodo(text) {
+export async function addTodo(text, extra = {}) {
+  if (usingCentro()) return centro.add({ titolo: text, ...extra });
   if (usingGoogle()) return g.addTodo(text);
   const l = local();
   l.todos.push({ id: uid(), text });
   saveLocal(l);
 }
+export async function setTodoStatus(id, stato) {
+  if (usingCentro()) return centro.update(id, { stato });
+  if (stato === "Completato") return completeTodo(id);
+  throw new Error("Gli stati (In corso, Bloccato…) funzionano solo con il centro di controllo.");
+}
 export async function deleteTodo(id) {
+  if (usingCentro()) return centro.remove(id);
   if (usingGoogle()) return g.deleteTodo(id);
   const l = local();
   l.todos = l.todos.filter((t) => t.id !== id);
   saveLocal(l);
 }
 export async function completeTodo(id) {
+  if (usingCentro()) return centro.update(id, { stato: "Completato" });
   if (usingGoogle()) return g.completeTodo(id);
   const l = local();
   l.todos = l.todos.filter((t) => t.id !== id);

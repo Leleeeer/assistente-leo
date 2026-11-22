@@ -10,9 +10,12 @@ import * as gemini from "./gemini.js";
 import * as store from "./store.js";
 import { Music, LEVELS, saveTrack, deleteTrack } from "./music.js";
 import { setupDetail, openDetail } from "./detail.js";
+import * as spotify from "./spotify.js";
+import * as centro from "./centro.js";
 
 // musica di sottofondo: si abbassa quando Jarvis parla
 const music = new Music();
+let musicOnDemand = false; // true se l'ha chiesta lui a voce: allora resta finché non dice «spegni la musica»
 let musicReady = Promise.resolve(false); // il brano viene caricato dalla memoria dell'iPad: ci vuole un attimo
 const musicFor = (m) => { if (music.playing) music.fade(m === "speak" ? LEVELS.duck : LEVELS.bed, m === "speak" ? 0.4 : 1.5); };
 
@@ -53,7 +56,10 @@ const ears = new Ears({
 
 const STATUS = { boot: "Avvio", sleep: "In attesa", listen: "In ascolto", think: "Sto pensando", speak: "Risponde" };
 function setMode(m) {
+  const prev = mode;
   mode = m;
+  // Spotify: più basso mentre Jarvis parla, poi torna come prima
+  if (spotify.connected() && (m === "speak") !== (prev === "speak")) spotify.duck(m === "speak");
   body.dataset.mode = m;
   orb.setMode(m);
   $("#statusText").textContent = STATUS[m] || m;
@@ -109,7 +115,12 @@ function wake(rest = "") {
     scene.wake(); // onda di luce del risveglio
     musicReady.then((ok) => {
       if (!ok || !S().musicAuto) return;
-      music.play(LEVELS.intro).then((played) => { if (played) setTimeout(() => musicFor(mode), 1500); else toast("La musica non è partita: tocchi il microfono o dica «metti la musica»."); });
+      music.play(LEVELS.intro).then((played) => {
+        if (!played) return toast("La musica non è partita: dica «metti la musica».");
+        setTimeout(() => musicFor(mode), 1500);
+        // come una sigla: dopo circa 10 secondi sfuma dolcemente e si spegne
+        setTimeout(() => { if (!musicOnDemand) music.stop(4); }, 10_000);
+      });
     });
     briefing();
     if (q.split(/\s+/).length >= 2) pending = q;
@@ -156,12 +167,13 @@ async function process(text) {
   $("#you").classList.remove("live");
   if (STANDBY.test(text)) { sleepAfter = true; return speak(`Come desidera, ${S().addressAs}. Sono qui se ha bisogno.`); }
   // comandi della musica: istantanei, senza AI
-  if (/\bmusica\b/i.test(text) && /\b(spegni|ferma|togli|stop|basta|interrompi)\b/i.test(text)) { music.stop(); return speak("Musica spenta."); }
+  if (/\bmusica\b/i.test(text) && /\b(spegni|ferma|togli|stop|basta|interrompi)\b/i.test(text)) { musicOnDemand = false; music.stop(); if (spotify.connected()) spotify.control("pause").catch(() => {}).then(updateNP); return speak("Musica spenta."); }
   if (/\bmusica\b/i.test(text) && /\b(alza|più forte)\b/i.test(text)) { music.volume = Math.min(1, music.volume + 0.2); store.setSettings({ musicVol: Math.round(music.volume * 100) }); musicFor(mode); return speak("Alzo la musica."); }
   if (/\bmusica\b/i.test(text) && /\b(abbassa|più piano)\b/i.test(text)) { music.volume = Math.max(0.1, music.volume - 0.2); store.setSettings({ musicVol: Math.round(music.volume * 100) }); musicFor(mode); return speak("Abbasso la musica."); }
-  if (/\b(metti|accendi|fai partire|riproduci|voglio|un po' di)\b.*\bmusica\b/i.test(text)) {
+  if (!spotify.connected() && /\b(metti|accendi|fai partire|riproduci|voglio|un po' di)\b.*\bmusica\b/i.test(text)) {
     if (!music.loaded) await musicReady;
     if (!music.loaded) return speak(`Non ho ancora un brano, ${S().addressAs}: lo scelga nelle impostazioni, alla voce Musica.`);
+    musicOnDemand = true;
     music.play(LEVELS.bed);
     return speak(pick([`Ecco un po' di musica, ${S().addressAs}.`, "Musica, maestro.", `Subito, ${S().addressAs}.`]));
   }
@@ -267,9 +279,10 @@ function renderAgenda() {
   $("#agenda").innerHTML = html;
 }
 function renderTodos() {
-  $("#todoCount").textContent = snap.todos.length ? String(snap.todos.length) : "";
+  $("#todoCount").textContent = (snap.todos.length ? String(snap.todos.length) : "") + (data.usingCentro() ? (snap.todos.length ? " · Centro" : "Centro") : "");
+  const when = (d) => (sameDay(d, new Date()) ? hm(d) : d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric" }) + (d.getHours() || d.getMinutes() ? ` ${hm(d)}` : ""));
   $("#todos").innerHTML = snap.todos.length
-    ? snap.todos.map((t) => `<li data-id="${esc(t.id)}"><button class="check" aria-label="Fatto"></button><span>${esc(t.text)}</span><i></i></li>`).join("")
+    ? snap.todos.map((t) => `<li data-id="${esc(t.id)}"><button class="check" aria-label="Fatto"></button><span>${t.importante ? '<b class="star">★</b> ' : ""}${esc(t.text)}${t.stato && t.stato !== "Da fare" ? ` <em class="stato s-${esc(t.stato.replace(/\s/g, ""))}">${esc(t.stato)}</em>` : ""}${t.quando ? `<small>${esc(when(t.quando))}</small>` : ""}</span><i></i></li>`).join("")
     : `<li class="empty">Niente da fare. Che lusso.</li>`;
 }
 function renderReminders() {
@@ -302,6 +315,7 @@ const loaders = {
 };
 const panelOf = { agenda: "#pAgenda", todos: "#pTodo", reminders: "#pRem", emails: "#pEmail" };
 async function refresh(what, flash = true) {
+  if (what === "spotify") return updateNP();
   try {
     await loaders[what]();
     if (flash) { const p = $(panelOf[what]); p.classList.remove("flash"); void p.offsetWidth; p.classList.add("flash"); }
@@ -444,6 +458,11 @@ function openSettings() {
   $("#settings").classList.toggle("voice-custom", preset.value === "custom");
   $("#kModel").value = k.elevenModel;
   $("#kGid").value = k.googleClientId; $("#kGsecret").value = k.googleClientSecret;
+  $("#kSpotify").value = k.spotifyClientId;
+  $("#kCentroRepo").value = k.centroRepo; $("#kCentroToken").value = k.centroToken;
+  state("#sCentro", centro.connected() ? `Collegato · ${k.centroRepo}` : "Non collegato: «Da fare» usa Google Tasks o l'iPad", centro.connected() ? "ok" : "");
+  $("#spRedirect").textContent = spotify.redirectUri();
+  state("#sSpotify", spotify.connected() ? `Collegato · ${spotify.account()}` : "Non collegato", spotify.connected() ? "ok" : "");
   $("#sAddress").value = s.addressAs; $("#sName").value = s.name; $("#sCity").value = s.city;
   $("#memFacts").value = m.facts.join("\n");
   state("#sBrains", m.brains.length ? `Ultimi cervelli usati: ${m.brains.slice(0, 4).map((b) => b.label).join(", ")}` : "");
@@ -510,6 +529,8 @@ function readKeyFields() {
     elevenlabs: $("#kEleven").value.trim(), elevenVoice: preset === "custom" ? $("#kVoice").value.trim() : preset,
     elevenModel: $("#kModel").value,
     googleClientId: $("#kGid").value.trim(), googleClientSecret: $("#kGsecret").value.trim(),
+    spotifyClientId: $("#kSpotify").value.trim(),
+    centroRepo: $("#kCentroRepo").value.trim() || "Leleeeer/centro-di-controllo", centroToken: $("#kCentroToken").value.trim(),
   });
 }
 $("#settingsSave").addEventListener("click", async () => {
@@ -601,11 +622,57 @@ setupDetail({
   toast,
 });
 const panelKind = { pAgenda: "agenda", pEmail: "emails", pTodo: "todos", pRem: "reminders" };
-document.querySelectorAll(".panel").forEach((p) => p.addEventListener("click", (e) => {
-  // i tocchi su pulsanti, caselle, email e campi restano ai loro comandi; il resto apre la sezione
-  if (e.target.closest("button, input, form, a, #emails li[data-id]")) return;
-  openDetail(panelKind[p.id]);
+// la sezione si apre SOLO toccando il titolo del widget (es. «Calendario ›»): il resto del widget resta per spuntare, leggere, scrivere
+document.querySelectorAll(".panel h3").forEach((h) => h.addEventListener("click", (e) => {
+  if (e.target.closest("button")) return; // i pulsanti piccoli (Settimana, Aggiorna) fanno la loro cosa
+  openDetail(panelKind[h.closest(".panel").id]);
 }));
+
+// ---------------------------------------------------------------- centro di controllo
+$("#ccConnect").addEventListener("click", async () => {
+  readKeyFields();
+  if (!centro.connected()) return state("#sCentro", "Incolla prima la chiave GitHub.", "err");
+  state("#sCentro", "Controllo…");
+  try {
+    await centro.check();
+    state("#sCentro", `Collegato · ${store.keys().centroRepo}`, "ok");
+    refresh("todos");
+  } catch (e) { state("#sCentro", e.message, "err"); }
+});
+$("#ccDisconnect").addEventListener("click", () => {
+  store.setKeys({ centroToken: "" });
+  $("#kCentroToken").value = "";
+  state("#sCentro", "Scollegato: «Da fare» torna a Google Tasks o all'iPad.");
+  refresh("todos");
+});
+
+// ---------------------------------------------------------------- Spotify: collegamento e brano in riproduzione
+$("#spConnect").addEventListener("click", async () => {
+  readKeyFields();
+  state("#sSpotify", "Ti porto su Spotify per dare il permesso…");
+  try { await spotify.connect(); } catch (e) { state("#sSpotify", e.message, "err"); }
+});
+$("#spDisconnect").addEventListener("click", () => { spotify.disconnect(); state("#sSpotify", "Scollegato."); updateNP(); });
+let npState = null;
+async function updateNP() {
+  if (!spotify.connected()) { $("#np").hidden = true; return; }
+  try { npState = await spotify.nowPlaying(); } catch { npState = null; }
+  $("#np").hidden = !npState;
+  if (!npState) return;
+  $("#npTitle").textContent = npState.title;
+  $("#npArtist").textContent = npState.artist;
+  $("#npIcon").setAttribute("d", npState.playing ? "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" : "M8 5v14l11-7z");
+}
+const npDo = (action) => spotify.control(action).catch((e) => toast(e.message)).then(() => setTimeout(updateNP, 700));
+$("#npToggle").addEventListener("click", () => npDo(npState?.playing ? "pause" : "resume"));
+$("#npNext").addEventListener("click", () => npDo("next"));
+$("#npPrev").addEventListener("click", () => npDo("previous"));
+setInterval(() => { if (!document.hidden) updateNP(); }, 15_000);
+// ritorno dalla pagina di Spotify dopo aver dato il permesso
+spotify.finishConnect()
+  .then((r) => { if (r) { toast(r.premium ? `Spotify collegato · ${r.name}` : `Spotify collegato, ma l'account ${r.name} non è Premium: i comandi non funzioneranno.`, !r.premium, 7000); updateNP(); } })
+  .catch((e) => toast(e.message, true, 7000));
+updateNP();
 
 // ---------------------------------------------------------------- partenza
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

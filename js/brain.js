@@ -3,12 +3,13 @@
 import * as claude from "./claude.js";
 import * as gemini from "./gemini.js";
 import * as data from "./data.js";
+import * as spotify from "./spotify.js";
 import { keys, settings, memory, addFact, contacts, saveContact } from "./store.js";
 
 // ---------------------------------------------------------------- strumenti
 const obj = (required, properties) => ({ type: "object", additionalProperties: false, required, properties });
 const str = (description) => ({ type: "string", description });
-export const TOOLS = [
+const BASE_TOOLS = [
   { name: "add_event", description: "Aggiunge un impegno all'agenda. Usalo quando l'utente chiede di segnare o fissare un appuntamento con giorno (e ora).",
     parameters: obj(["title", "date", "time", "minutes"], { title: str("Titolo breve e chiaro"), date: str("YYYY-MM-DD"), time: str("HH:MM (24h) oppure stringa vuota se è per tutto il giorno"), minutes: { type: "integer", description: "Durata in minuti (di solito 60)" } }) },
   { name: "delete_event", description: "Cancella un impegno dell'agenda dei prossimi 7 giorni.",
@@ -16,7 +17,10 @@ export const TOOLS = [
   { name: "add_reminder", description: "Crea un promemoria: all'ora indicata Jarvis lo avvisa (e arriva una notifica di Google Calendar).",
     parameters: obj(["text", "date", "time"], { text: str("Cosa ricordare, breve"), date: str("YYYY-MM-DD"), time: str("HH:MM (24h)") }) },
   { name: "delete_reminder", description: "Cancella un promemoria.", parameters: obj(["text"], { text: str("Testo o parte del testo") }) },
-  { name: "add_todo", description: "Aggiunge una voce alla lista delle cose da fare (senza orario).", parameters: obj(["text"], { text: str("La cosa da fare") }) },
+  { name: "add_todo", description: "Aggiunge un'attività alla lista Da fare (nel centro di controllo, se collegato). Se dice un giorno o un'ora compila when.",
+    parameters: obj(["text", "when", "important"], { text: str("Nome breve dell'attività"), when: str("Giorno e ora AAAA-MM-GG HH:MM, oppure stringa vuota"), important: { type: "boolean", description: "true se la indica come importante" } }) },
+  { name: "set_todo_status", description: "Cambia lo stato di un'attività Da fare: In corso, In revisione, Bloccato, Da fare o Completato.",
+    parameters: obj(["text", "status"], { text: str("Nome o parte del nome dell'attività"), status: { type: "string", enum: ["Da fare", "In corso", "In revisione", "Completato", "Bloccato"] } }) },
   { name: "complete_todo", description: "Segna come fatta (e toglie dalla lista) una cosa da fare.", parameters: obj(["text"], { text: str("Testo o parte del testo") }) },
   { name: "search_emails", description: "Cerca email in Gmail. Stringa vuota = email non lette in arrivo. Accetta la sintassi di ricerca di Gmail (es. from:amazon, newer_than:7d).",
     parameters: obj(["query"], { query: str("Ricerca Gmail, oppure stringa vuota") }) },
@@ -29,6 +33,16 @@ export const TOOLS = [
   { name: "save_memory", description: "Salva nella memoria a lungo termine un'informazione utile in futuro (preferenze, persone, abitudini, progetti).",
     parameters: obj(["text"], { text: str("Il fatto da ricordare, in terza persona, completo") }) },
 ];
+
+// strumenti di Spotify: ci sono solo se Spotify è collegato
+const SPOTIFY_TOOLS = [
+  { name: "spotify_play", description: "Fa partire musica su Spotify (app Spotify dell'utente). Cerca prima tra le sue playlist. query vuota = riprendi da dove era.",
+    parameters: obj(["query", "kind"], { query: str("Cosa suonare: nome di playlist, brano, artista o album; oppure 'brani che mi piacciono'; vuoto per riprendere"), kind: { type: "string", enum: ["any", "playlist", "track", "artist", "album"], description: "Tipo, se chiaro dalla richiesta; altrimenti any" } }) },
+  { name: "spotify_control", description: "Comanda Spotify: pausa, riprendi, brano successivo o precedente, volume, riproduzione casuale.",
+    parameters: obj(["action"], { action: { type: "string", enum: ["pause", "resume", "next", "previous", "volume_up", "volume_down", "shuffle"] } }) },
+  { name: "spotify_now_playing", description: "Dice cosa sta suonando adesso su Spotify.", parameters: obj([], {}) },
+];
+export const tools = () => [...BASE_TOOLS, ...(spotify.connected() ? SPOTIFY_TOOLS : [])];
 
 // ---------------------------------------------------------------- esecuzione degli strumenti
 const drafts = new Map();
@@ -78,9 +92,16 @@ async function runTool(name, a, emit) {
         return `Promemoria cancellato: ${r.text}.`;
       }
       case "add_todo":
-        await data.addTodo(String(a.text).slice(0, 200));
+        await data.addTodo(String(a.text).slice(0, 200), { quando: /^\d{4}-\d{2}-\d{2}/.test(a.when || "") ? a.when : "", importante: !!a.important });
         emit({ type: "changed", what: "todos" });
         return "Aggiunto alla lista.";
+      case "set_todo_status": {
+        const t = findBy(await data.todos(), a.text, "text");
+        if (!t) return "Non trovo quell'attività nella lista Da fare.";
+        await data.setTodoStatus(t.id, a.status);
+        emit({ type: "changed", what: "todos" });
+        return `«${t.text}» ora è: ${a.status}.`;
+      }
       case "complete_todo": {
         const t = findBy(await data.todos(), a.text, "text");
         if (!t) return "Non trovo quella voce nella lista delle cose da fare.";
@@ -135,6 +156,20 @@ async function runTool(name, a, emit) {
         saveContact(String(a.name).trim(), email);
         return "Contatto salvato.";
       }
+      case "spotify_play": {
+        const r = await spotify.play(a.query, a.kind === "any" ? "" : a.kind);
+        setTimeout(() => emit({ type: "changed", what: "spotify" }), 1500);
+        return r;
+      }
+      case "spotify_control": {
+        const r = await spotify.control(a.action);
+        setTimeout(() => emit({ type: "changed", what: "spotify" }), 800);
+        return r;
+      }
+      case "spotify_now_playing": {
+        const n = await spotify.nowPlaying();
+        return n ? `${n.playing ? "Sta suonando" : "In pausa"}: «${n.title}» di ${n.artist}, su ${n.device}.` : "Su Spotify non sta suonando niente.";
+      }
       case "save_memory":
         addFact(a.text);
         emit({ type: "memory", text: a.text });
@@ -156,7 +191,7 @@ function instructions(snap) {
   const day = (d) => d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
   const hm = (d) => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   const agenda = snap.events?.length ? snap.events.map((e) => `- ${day(e.start)} ${e.allDay ? "tutto il giorno" : hm(e.start)}: ${e.title}${e.location ? ` (${e.location})` : ""}`).join("\n") : "- nessun impegno";
-  const todos = snap.todos?.length ? snap.todos.map((t) => `- ${t.text}`).join("\n") : "- lista vuota";
+  const todos = snap.todos?.length ? snap.todos.map((t) => `- ${t.text}${t.stato && t.stato !== "Da fare" ? ` [${t.stato}]` : ""}${t.importante ? " (importante)" : ""}${t.quando ? ` · ${day(t.quando)} ${hm(t.quando)}` : ""}`).join("\n") : "- lista vuota";
   const rem = snap.reminders?.filter((r) => r.at > Date.now() - 36e5).map((r) => `- ${day(r.at)} ${hm(r.at)}: ${r.text}`).join("\n") || "- nessuno";
   const mails = !data.usingGoogle() ? "Gmail non collegato." : snap.emails?.length ? snap.emails.map((e) => `- id ${e.id} · da ${e.from} · «${e.subject}» · ${e.snippet.slice(0, 120)}`).join("\n") : "- nessuna email non letta";
   const pending = [...drafts].filter(([, d]) => turn - d.turn <= 3).map(([id, d]) => `id ${id}: a ${d.name || d.to}, «${d.subject}»`).join(" | ") || "nessuna";
@@ -187,6 +222,7 @@ STRUMENTI
 - Se manca un dato indispensabile (giorno o ora), chiedilo prima. Interpreta tu "domani", "venerdì", "tra due ore" rispetto ad adesso.
 - Salva spontaneamente un ricordo quando condivide una preferenza o un'informazione personale chiaramente utile in futuro.
 - EMAIL: per riassumere leggi prima l'email completa. Per rispondere o scrivere prepara la bozza, rileggila in breve e chiedi "La spedisco?". Spedisci solo dopo un sì chiaro nella risposta successiva. Se detta un indirizzo, ripeti le parti dubbie.
+- MUSICA: ${spotify.connected() ? "puoi comandare Spotify (Premium) dell'utente: playlist, brani, artisti, pausa, avanti, volume. Per «metti un po' di musica» senza altro, scegli tu qualcosa di adatto al momento o riprendi la riproduzione. Conferma in poche parole cosa hai messo." : "Spotify non è collegato: se lo chiede, digli che può collegarlo dall'ingranaggio, sezione Spotify."}
 - Non nominare mai strumenti, funzioni, id, JSON o dettagli tecnici.
 
 CONTESTO
@@ -242,7 +278,7 @@ export async function think({ message, history, snap, emit, signal }) {
       onTool: (name) => { progressed = true; emit({ type: "tool", name }); },
       runTool: (name, args) => runTool(name, args, emit),
     };
-    const args = { apiKey: b.kind === "claude" ? k.anthropic : k.gemini, model: b.model, system, history: past, message, tools: TOOLS };
+    const args = { apiKey: b.kind === "claude" ? k.anthropic : k.gemini, model: b.model, system, history: past, message, tools: tools() };
     try {
       await (b.kind === "claude" ? claude.converse(args, io) : gemini.converse(args, io));
       return `${b.provider} ${b.label}`;

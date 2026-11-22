@@ -15,7 +15,7 @@ export function save(key, value) {
 }
 
 // ---------------------------------------------------------------- chiavi e impostazioni
-export const keys = () => ({ anthropic: "", gemini: "", elevenlabs: "", elevenVoice: "", elevenModel: "eleven_multilingual_v2", googleClientId: "", googleClientSecret: "", ...load("keys", {}) });
+export const keys = () => ({ anthropic: "", gemini: "", elevenlabs: "", elevenVoice: "", elevenModel: "eleven_multilingual_v2", googleClientId: "", googleClientSecret: "", spotifyClientId: "", centroRepo: "Leleeeer/centro-di-controllo", centroToken: "", ...load("keys", {}) });
 export const setKeys = (patch) => save("keys", { ...keys(), ...patch });
 
 export const settings = () => ({ addressAs: "signore", name: "Leo", city: "", musicAuto: true, musicVol: 70, ...load("settings", {}) });

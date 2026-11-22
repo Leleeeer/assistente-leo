@@ -148,11 +148,13 @@ async function todoView() {
   $("#detailBody").innerHTML = `
     <section class="card single">
       <form class="addform inline" id="tdForm"><input name="text" placeholder="Nuova cosa da fare" required autocomplete="off"><button class="primary">Aggiungi</button></form>
-      <ol class="rows big">${list.length ? list.map((t) => `<li><button class="check" data-done="${esc(t.id)}" aria-label="Fatto"></button><span>${esc(t.text)}</span><button class="x" data-del="${esc(t.id)}" aria-label="Cancella">×</button></li>`).join("") : `<li class="empty">Niente da fare. Che lusso.</li>`}</ol>
+      ${data.usingCentro() ? `<p class="sub">Dal tuo centro di controllo: le modifiche si vedono anche lì.</p>` : ""}
+      <ol class="rows big">${list.length ? list.map((t) => `<li class="todo"><button class="check" data-done="${esc(t.id)}" aria-label="Fatto"></button><span>${t.importante ? '<b class="star">★</b> ' : ""}${esc(t.text)}${t.descrizione ? `<small>${esc(t.descrizione)}</small>` : ""}${t.quando ? `<small>${esc(dayLong(t.quando))}${t.quando.getHours() || t.quando.getMinutes() ? ` · ${hm(t.quando)}` : ""}</small>` : ""}</span>${data.usingCentro() ? `<select class="stato-sel" data-st="${esc(t.id)}">${["Da fare", "In corso", "In revisione", "Bloccato", "Completato"].map((x) => `<option${x === t.stato ? " selected" : ""}>${x}</option>`).join("")}</select>` : ""}<button class="x" data-del="${esc(t.id)}" aria-label="Cancella">×</button></li>`).join("") : `<li class="empty">Niente da fare. Che lusso.</li>`}</ol>
     </section>`;
   const body = $("#detailBody");
   body.querySelectorAll("[data-done]").forEach((b) => (b.onclick = async () => { b.closest("li").classList.add("done"); await act(() => data.completeTodo(b.dataset.done), "todos"); setTimeout(todoView, 400); }));
-  body.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => { await act(() => data.deleteTodo(b.dataset.del), "todos"); todoView(); }));
+  body.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => { if (!confirm("Eliminare questa attività?")) return; await act(() => data.deleteTodo(b.dataset.del), "todos"); todoView(); }));
+  body.querySelectorAll("[data-st]").forEach((sel) => (sel.onchange = async () => { await act(() => data.setTodoStatus(sel.dataset.st, sel.value), "todos"); todoView(); }));
   $("#tdForm").onsubmit = async (e) => { e.preventDefault(); const v = new FormData(e.target).get("text").trim(); if (!v) return; await act(() => data.addTodo(v), "todos"); todoView(); };
 }
 
