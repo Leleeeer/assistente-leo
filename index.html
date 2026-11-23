@@ -46,6 +46,9 @@
         <span id="brainChip" hidden><b id="brainName">—</b></span>
       </div>
       <span id="clock" hidden></span>
+      <button id="plugBtn" class="round plug" aria-label="Presa" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 3v5M15 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"/></svg>
+      </button>
       <button id="gear" class="round" aria-label="Impostazioni">
         <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       </button>
@@ -225,6 +228,29 @@
           <input id="kCentroToken" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
           <div class="row left"><button class="primary" id="ccConnect" type="button">Collega</button><button class="ghost" id="ccDisconnect" type="button">Scollega</button></div>
           <small class="state" id="sCentro"></small>
+        </div>
+      </section>
+
+      <section class="step">
+        <h3>Casa · Presa Tapo</h3>
+        <div class="group">
+          <p>Jarvis accende e spegne la tua presa Tapo passando da IFTTT, il ponte ufficiale tra Tapo e le altre app (gratis). Dici «accendi la presa» oppure tocchi il pulsante con la spina in alto.</p>
+          <details>
+            <summary>Come collegarla (una volta sola, circa 10 minuti)</summary>
+            <ol>
+              <li>Scarica l'app <b>IFTTT</b> sull'iPad (o apri <a href="https://ifttt.com" target="_blank" rel="noopener">ifttt.com</a>) e crea un account gratuito.</li>
+              <li>Collega Tapo: apri <a href="https://ifttt.com/tplink_tapo" target="_blank" rel="noopener">TP-Link Tapo su IFTTT</a> → <b>Connect</b> → accedi con l'account dell'app Tapo.</li>
+              <li>Crea la prima applet: <b>Create</b> → <b>If This</b> → <b>Webhooks</b> → <b>Receive a web request</b> → Event Name: <code>jarvis_presa_on</code> → <b>Then That</b> → <b>TP-Link Tapo</b> → <b>Turn on</b> → scegli la tua presa → <b>Finish</b>.</li>
+              <li>Crea la seconda applet uguale ma con Event Name <code>jarvis_presa_off</code> e azione <b>Turn off</b>.</li>
+              <li>Apri <a href="https://ifttt.com/maker_webhooks/settings" target="_blank" rel="noopener">le impostazioni di Webhooks</a>: nell'indirizzo che compare (…/use/<b>CODICE</b>) copia il codice finale, incollalo qui sotto e premi <b>Accendi</b> per provare.</li>
+            </ol>
+          </details>
+          <label>Chiave Webhooks di IFTTT</label>
+          <input id="kIfttt" type="password" placeholder="es. dK3xY…" autocomplete="off" spellcheck="false">
+          <label>Come la chiami</label>
+          <input id="kPlugName" placeholder="presa (es. lampada del salotto)" autocomplete="off">
+          <div class="row left"><button class="primary" id="plugOn" type="button">Accendi</button><button class="ghost" id="plugOff" type="button">Spegni</button></div>
+          <small class="state" id="sPlug"></small>
         </div>
       </section>
 
